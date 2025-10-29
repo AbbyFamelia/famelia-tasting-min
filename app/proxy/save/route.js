@@ -101,30 +101,34 @@ export async function POST(request) {
     }
 
     // 3) Merge new note
-    const now = new Date().toISOString();
-    let evt = store.events.find(e => e.collection_handle === event_handle);
-    if (!evt) {
-      evt = {
-        id: event_handle,
-        name: event_name || event_handle,
-        date: now.slice(0,10),
-        collection_handle: event_handle,
-        wines: []
-      };
-      store.events.push(evt);
-    }
+const now = new Date().toISOString();
+let evt = store.events.find(e => e.collection_handle === event_handle);
+if (!evt) {
+  evt = {
+    id: event_handle,
+    name: event_name || event_handle,
+    date: now.slice(0,10),
+    collection_handle: event_handle,
+    wines: []
+  };
+  store.events.push(evt);
+}
 
-    const pid = Number(product.product_id);
-    const entry = {
-      product_id: pid,
-      handle: product.handle || "",
-      title: product.title || "",
-      rating: typeof product.rating === "number" ? product.rating : null,
-      note: (product.note || "").slice(0, 2000),
-      updated_at: now
-    };
-    const idx = evt.wines.findIndex(w => w.product_id === pid);
-    if (idx === -1) evt.wines.push(entry); else evt.wines[idx] = entry;
+const pid = Number(product.product_id);
+const entry = {
+  product_id: pid,
+  handle: product.handle || "",
+  title: product.title || "",
+  rating: (typeof product.rating === "number") ? product.rating : null,
+  // NEW fields (trim to keep payload tidy)
+  nose:   (product.nose   || "").slice(0, 2000),
+  palate: (product.palate || "").slice(0, 2000),
+  note:   (product.note   || "").slice(0, 2000),
+  updated_at: now
+};
+
+const idx = evt.wines.findIndex(w => w.product_id === pid);
+if (idx === -1) evt.wines.push(entry); else evt.wines[idx] = entry;
 
     // 4) Save back
     const q3 = `
