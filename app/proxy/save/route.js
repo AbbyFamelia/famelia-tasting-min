@@ -115,20 +115,43 @@ if (!evt) {
 }
 
 const pid = Number(product.product_id);
-const entry = {
-  product_id: pid,
-  handle: product.handle || "",
-  title: product.title || "",
-  rating: (typeof product.rating === "number") ? product.rating : null,
-  // NEW fields (trim to keep payload tidy)
-  nose:   (product.nose   || "").slice(0, 2000),
-  palate: (product.palate || "").slice(0, 2000),
-  note:   (product.note   || "").slice(0, 2000),
-  updated_at: now
-};
-
 const idx = evt.wines.findIndex(w => w.product_id === pid);
-if (idx === -1) evt.wines.push(entry); else evt.wines[idx] = entry;
+
+if (idx === -1) {
+  // New entry: write created_at once
+  const entryNew = {
+    product_id: pid,
+    handle: product.handle || "",
+    title: product.title || "",
+    rating: (typeof product.rating === "number") ? product.rating : null,
+    nose:   (product.nose   || "").slice(0, 2000),
+    palate: (product.palate || "").slice(0, 2000),
+    note:   (product.note   || "").slice(0, 2000),
+    created_at: now,
+    updated_at: now
+  };
+  evt.wines.push(entryNew);
+} else {
+  // Existing entry: preserve created_at, refresh updated_at
+  const existing = evt.wines[idx];
+  evt.wines[idx] = {
+    ...existing,
+    handle: product.handle || existing.handle || "",
+    title:  product.title  || existing.title  || "",
+    rating: (typeof product.rating === "number") ? product.rating : existing.rating ?? null,
+    nose:   (product.nose   ?? existing.nose   ?? "").slice(0, 2000),
+    palate: (product.palate ?? existing.palate ?? "").slice(0, 2000),
+    note:   (product.note   ?? existing.note   ?? "").slice(0, 2000),
+    created_at: existing.created_at || existing.updated_at || now, // backfill just in case
+    updated_at: now
+  };
+}
+
+// Light backfill for any legacy wines in this event missing created_at
+evt.wines.forEach(w => {
+  if (!w.created_at) w.created_at = w.updated_at || now;
+});
+
 
     // 4) Save back
     const q3 = `
