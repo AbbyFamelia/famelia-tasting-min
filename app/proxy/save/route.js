@@ -81,7 +81,7 @@ if (!shop || !event_handle || !product?.product_id) {
 if (!customer_id || !customer_email) {
   return bad(
     'Please log in to save your tasting notes. ' +
-    '<a href="https://account.famelia.com.au/?locale=en&region_country=AU">Log in</a>.',
+    '<a href="https://account.famelia.com.au/?locale=en&region_country=AU">Log in here.</a>.',
     401,
     origin
   );
