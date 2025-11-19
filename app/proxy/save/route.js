@@ -71,9 +71,21 @@ export async function POST(request) {
   }
 
   const { shop, customer_id, customer_email, event_handle, event_name, product } = body || {};
-  if (!shop || !customer_id || !customer_email || !event_handle || !product?.product_id) {
-    return bad("Missing required fields", 400, origin);
-  }
+
+// 1) Validate basic fields that really *should* always be present
+if (!shop || !event_handle || !product?.product_id) {
+  return bad("Missing required fields", 400, origin);
+}
+
+// 2) Special case: customer not logged in → friendly login message
+if (!customer_id || !customer_email) {
+  return bad(
+    'Please log in to save your tasting notes. ' +
+    '<a href="https://account.famelia.com.au/?locale=en&region_country=AU">Log in</a>.',
+    401,
+    origin
+  );
+}
 
   try {
     // 1) Verify the customer really matches your store record
