@@ -72,12 +72,12 @@ export async function POST(request) {
 
   const { shop, customer_id, customer_email, event_handle, event_name, product } = body || {};
 
-// 1) Validate basic fields that really *should* always be present
+// 1) Genuine broken payload (no shop / event / product)
 if (!shop || !event_handle || !product?.product_id) {
   return bad("Missing required fields", 400, origin);
 }
 
-// 2) Special case: customer not logged in → friendly login message
+// 2) Special case: not logged in → return login link
 if (!customer_id || !customer_email) {
   return bad(
     '<a href="https://account.famelia.com.au/?locale=en&region_country=AU">Log in here to save your tasting notes.</a>',
