@@ -80,7 +80,7 @@ if (!shop || !event_handle || !product?.product_id) {
 // 2) Special case: customer not logged in → friendly login message
 if (!customer_id || !customer_email) {
   return bad(
-    '<a href="https://account.famelia.com.au/?locale=en&region_country=AU">Log in here to save your tasting notes</a>.',
+    "<a href="https://account.famelia.com.au/?locale=en&region_country=AU">Log in here to save your tasting notes</a>.",
     401,
     origin
   );
