@@ -63,47 +63,98 @@ export async function POST(req) {
       return NextResponse.json({ ok: true, empty: true });
     }
 
-    // 2️⃣ Parse JSON value
-    let value;
+        // 2️⃣ Parse JSON value (support both legacy {events:[]} and new {wines:[]})
+    let valueRaw;
     try {
-      value =
+      valueRaw =
         typeof metafield.value === "string"
           ? JSON.parse(metafield.value)
           : metafield.value;
     } catch {
-      value = { events: [] };
+      valueRaw = {};
     }
-    if (!value || !Array.isArray(value.events)) value = { events: [] };
+    const value = valueRaw && typeof valueRaw === "object" ? valueRaw : {};
 
-    // 3️⃣ Find matching event
-    const evIndex = value.events.findIndex(
-      (e) =>
-        (event_handle && e.handle === event_handle) ||
-        (!event_handle && event_name && e.name === event_name)
-    );
-    if (evIndex === -1) {
-      return NextResponse.json({ ok: true, notFound: "event" });
-    }
-
-    const ev = value.events[evIndex];
-    if (!Array.isArray(ev.wines)) ev.wines = [];
-
-    // 4️⃣ Remove the wine
+    // Normalise product identifiers once
     const pid = Number(product.product_id || 0) || null;
     const handle = product.handle || null;
 
-    const before = ev.wines.length;
-    ev.wines = ev.wines.filter((w) => {
-      const wPid = Number(w.product_id || 0) || null;
-      const wHandle = w.handle || null;
-      const matchByPid = pid && wPid && wPid === pid;
-      const matchByHandle = handle && wHandle && wHandle === handle;
-      return !(matchByPid || matchByHandle);
-    });
-    const removedCount = before - ev.wines.length;
+    let removedCount = 0;
 
-    // Optional: remove empty event
-    // if (ev.wines.length === 0) value.events.splice(evIndex, 1);
+    if (Array.isArray(value.wines)) {
+      // 🔄 New wine-first model: { wines: [ { product_id, handle, ..., events: [] } ] }
+      const wines = value.wines;
+
+      // Find the wine we want to "clear"
+      const targetIndex = wines.findIndex((w) => {
+        const wPid = Number(w.product_id || 0) || null;
+        const wHandle = w.handle || null;
+        const matchByPid = pid && wPid && wPid === pid;
+        const matchByHandle = handle && wHandle && wHandle === handle;
+        return matchByPid || matchByHandle;
+      });
+
+      if (targetIndex === -1) {
+        // Nothing to delete for this wine
+        return NextResponse.json({ ok: true, notFound: "wine" });
+      }
+
+      const wine = wines[targetIndex];
+
+      // Clear tasting fields but keep the wine + events history
+      wine.rating = null;
+      wine.nose = "";
+      wine.palate = "";
+      wine.note = "";
+      wine.updated_at = new Date().toISOString();
+
+      // Optional: also prune a specific event from this wine, if provided
+      if (event_handle && Array.isArray(wine.events)) {
+        wine.events = wine.events.filter(
+          (ev) =>
+            ev.collection_handle !== event_handle &&
+            ev.id !== event_handle
+        );
+      }
+
+      removedCount = 1;
+    } else if (Array.isArray(value.events)) {
+      // 🧩 Legacy event-first model: { events: [ { ..., wines: [] } ] }
+
+      // 3️⃣ Find matching event (use collection_handle or id; handle was never set)
+      const evIndex = value.events.findIndex(
+        (e) =>
+          (event_handle &&
+            (e.collection_handle === event_handle || e.id === event_handle)) ||
+          (!event_handle && event_name && e.name === event_name)
+      );
+      if (evIndex === -1) {
+        return NextResponse.json({ ok: true, notFound: "event" });
+      }
+
+      const ev = value.events[evIndex];
+      if (!Array.isArray(ev.wines)) ev.wines = [];
+
+      // 4️⃣ Remove the wine from this event’s wines array
+      const before = ev.wines.length;
+      ev.wines = ev.wines.filter((w) => {
+        const wPid = Number(w.product_id || 0) || null;
+        const wHandle = w.handle || null;
+        const matchByPid = pid && wPid && wPid === pid;
+        const matchByHandle = handle && wHandle && wHandle === handle;
+        return !(matchByPid || matchByHandle);
+      });
+      removedCount = before - ev.wines.length;
+
+      // Optional: remove empty event
+      // if (ev.wines.length === 0) value.events.splice(evIndex, 1);
+    } else {
+      // Unknown shape – nothing sensible to do
+      return NextResponse.json(
+        { ok: false, error: "Unexpected tasting.events metafield shape" },
+        { status: 500 }
+      );
+    }
 
     // 5️⃣ Save updated metafield
     const updateBody = {
