@@ -96,41 +96,43 @@ if (!customer_id || !customer_email) {
       return bad("Customer verification failed", 401, origin);
     }
 
-    // 2) Read existing metafield JSON
-    const q2 = `
-      query($id: ID!) {
-        customer(id: $id) {
-          metafield(namespace:"tasting", key:"events") { id type value }
-        }
-      }
-    `;
-    const d2 = await shopifyGraphQL(q2, { id: customerGID });
-    let store = { events: [] };
-    const mf = d2?.customer?.metafield;
-    if (mf?.value) {
-      try { store = JSON.parse(mf.value); } catch {}
+// 2) Read existing metafield JSON (wine-first model)
+const q2 = `
+  query($id: ID!) {
+    customer(id: $id) {
+      metafield(namespace:"tasting", key:"events") { id type value }
     }
+  }
+`;
+const d2 = await shopifyGraphQL(q2, { id: customerGID });
 
-    // 3) Merge new note
-const now = new Date().toISOString();
-let evt = store.events.find(e => e.collection_handle === event_handle);
-if (!evt) {
-  evt = {
-    id: event_handle,
-    name: event_name || event_handle,
-    date: now.slice(0,10),
-    collection_handle: event_handle,
-    wines: []
-  };
-  store.events.push(evt);
+// New shape: { wines: [ { ... } ] }
+let store = { wines: [] };
+
+const mf = d2?.customer?.metafield;
+if (mf?.value) {
+  try {
+    const parsed = JSON.parse(mf.value);
+
+    // If it’s already wine-first, keep it; otherwise start fresh
+    if (parsed && Array.isArray(parsed.wines)) {
+      store = parsed;
+    }
+  } catch {
+    // ignore parse errors; start from empty
+  }
 }
 
+// 3) Merge new note into wine-first store
+const now = new Date().toISOString();
+const today = now.slice(0, 10);
 const pid = Number(product.product_id);
-const idx = evt.wines.findIndex(w => w.product_id === pid);
 
-if (idx === -1) {
-  // New entry: write created_at once
-  const entryNew = {
+// Find or create the wine record
+let wine = store.wines.find(w => w.product_id === pid);
+
+if (!wine) {
+  wine = {
     product_id: pid,
     handle: product.handle || "",
     title: product.title || "",
@@ -139,29 +141,46 @@ if (idx === -1) {
     palate: (product.palate || "").slice(0, 2000),
     note:   (product.note   || "").slice(0, 2000),
     created_at: now,
-    updated_at: now
+    updated_at: now,
+    events: []
   };
-  evt.wines.push(entryNew);
+  store.wines.push(wine);
 } else {
-  // Existing entry: preserve created_at, refresh updated_at
-  const existing = evt.wines[idx];
-  evt.wines[idx] = {
-    ...existing,
-    handle: product.handle || existing.handle || "",
-    title:  product.title  || existing.title  || "",
-    rating: (typeof product.rating === "number") ? product.rating : existing.rating ?? null,
-    nose:   (product.nose   ?? existing.nose   ?? "").slice(0, 2000),
-    palate: (product.palate ?? existing.palate ?? "").slice(0, 2000),
-    note:   (product.note   ?? existing.note   ?? "").slice(0, 2000),
-    created_at: existing.created_at || existing.updated_at || now, // backfill just in case
-    updated_at: now
-  };
+  // Existing entry: preserve created_at, update tasting fields
+  wine.handle = product.handle || wine.handle || "";
+  wine.title  = product.title  || wine.title  || "";
+
+  if (typeof product.rating === "number") {
+    wine.rating = product.rating;
+  }
+
+  wine.nose   = (product.nose   ?? wine.nose   ?? "").slice(0, 2000);
+  wine.palate = (product.palate ?? wine.palate ?? "").slice(0, 2000);
+  wine.note   = (product.note   ?? wine.note   ?? "").slice(0, 2000);
+
+  wine.created_at = wine.created_at || wine.updated_at || now;
+  wine.updated_at = now;
 }
 
-// Light backfill for any legacy wines in this event missing created_at
-evt.wines.forEach(w => {
-  if (!w.created_at) w.created_at = w.updated_at || now;
-});
+// Ensure events[] exists
+if (!Array.isArray(wine.events)) wine.events = [];
+
+// Attach or update the event entry (by collection_handle)
+let ev = wine.events.find(e => e.collection_handle === event_handle);
+
+if (!ev) {
+  ev = {
+    id: event_handle,
+    name: event_name || event_handle,
+    collection_handle: event_handle,
+    date: today
+  };
+  wine.events.push(ev);
+} else {
+  // Keep name up to date if you ever change event_name
+  if (event_name) ev.name = event_name;
+  // You can decide whether to bump the date; for now we leave it as first-seen
+}
 
 
     // 4) Save back
