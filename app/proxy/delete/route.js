@@ -8,13 +8,11 @@ const CORS_HEADERS = {
 };
 
 export async function OPTIONS() {
-  return NextResponse.json(
-    {},
-    {
-      status: 204,
-      headers: CORS_HEADERS,
-    }
-  );
+  // Preflight should return a 204 with CORS headers and no body
+  return new Response(null, {
+    status: 204,
+    headers: CORS_HEADERS,
+  });
 }
 
 export async function POST(req) {
