@@ -31,9 +31,9 @@ export async function POST(req) {
 
     if (!shop || !customer_id) {
       return NextResponse.json(
-        { ok: false, error: "Missing shop or customer_id" },
-        { status: 400 }
-      );
+  { ok: false, error: "Missing shop or customer_id" },
+  { status: 400, headers: CORS_HEADERS }
+);
     }
 
     const ADMIN_TOKEN = process.env.SHOPIFY_ADMIN_API_ACCESS_TOKEN;
@@ -41,9 +41,9 @@ export async function POST(req) {
 
     if (!ADMIN_TOKEN || !STORE_DOMAIN) {
       return NextResponse.json(
-        { ok: false, error: "Server missing Shopify env vars" },
-        { status: 500 }
-      );
+  { ok: false, error: "Server missing Shopify env vars" },
+  { status: 500, headers: CORS_HEADERS }
+);
     }
 
     // 1️⃣ Load the tasting.events metafield
@@ -56,17 +56,20 @@ export async function POST(req) {
     if (!metaListResp.ok) {
       const text = await metaListResp.text();
       return NextResponse.json(
-        { ok: false, error: "Shopify metafield fetch failed", detail: text },
-        { status: 502 }
-      );
+  { ok: false, error: "Shopify metafield fetch failed", detail: text },
+  { status: 502, headers: CORS_HEADERS }
+);
     }
 
     const metaList = await metaListResp.json();
     const metafield = (metaList.metafields && metaList.metafields[0]) || null;
 
     if (!metafield) {
-      return NextResponse.json({ ok: true, empty: true });
-    }
+  return NextResponse.json(
+    { ok: true, empty: true },
+    { headers: CORS_HEADERS }
+  );
+}
 
         // 2️⃣ Parse JSON value (support both legacy {events:[]} and new {wines:[]})
     let valueRaw;
@@ -100,9 +103,12 @@ export async function POST(req) {
       });
 
       if (targetIndex === -1) {
-        // Nothing to delete for this wine
-        return NextResponse.json({ ok: true, notFound: "wine" });
-      }
+  // Nothing to delete for this wine
+  return NextResponse.json(
+    { ok: true, notFound: "wine" },
+    { headers: CORS_HEADERS }
+  );
+}
 
       const wine = wines[targetIndex];
 
@@ -134,8 +140,11 @@ export async function POST(req) {
           (!event_handle && event_name && e.name === event_name)
       );
       if (evIndex === -1) {
-        return NextResponse.json({ ok: true, notFound: "event" });
-      }
+  return NextResponse.json(
+    { ok: true, notFound: "event" },
+    { headers: CORS_HEADERS }
+  );
+}
 
       const ev = value.events[evIndex];
       if (!Array.isArray(ev.wines)) ev.wines = [];
@@ -156,9 +165,9 @@ export async function POST(req) {
     } else {
       // Unknown shape – nothing sensible to do
       return NextResponse.json(
-        { ok: false, error: "Unexpected tasting.events metafield shape" },
-        { status: 500 }
-      );
+  { ok: false, error: "Unexpected tasting.events metafield shape" },
+  { status: 500, headers: CORS_HEADERS }
+);
     }
 
     // 5️⃣ Save updated metafield
@@ -180,18 +189,21 @@ export async function POST(req) {
     });
 
     if (!updateResp.ok) {
-      const text = await updateResp.text();
-      return NextResponse.json(
-        { ok: false, error: "Shopify metafield update failed", detail: text },
-        { status: 502 }
-      );
-    }
+  const text = await updateResp.text();
+  return NextResponse.json(
+    { ok: false, error: "Shopify metafield update failed", detail: text },
+    { status: 502, headers: CORS_HEADERS }
+  );
+}
 
-    return NextResponse.json({ ok: true, removed: removedCount });
-  } catch (err) {
     return NextResponse.json(
-      { ok: false, error: err.message || "Server error" },
-      { status: 500 }
-    );
-  }
+  { ok: true, removed: removedCount },
+  { headers: CORS_HEADERS }
+);
+  } catch (err) {
+  return NextResponse.json(
+    { ok: false, error: err.message || "Server error" },
+    { status: 500, headers: CORS_HEADERS }
+  );
+}
 }
