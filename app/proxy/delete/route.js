@@ -34,18 +34,33 @@ export async function POST(req) {
 );
     }
 
-    const ADMIN_TOKEN = process.env.SHOPIFY_ADMIN_API_ACCESS_TOKEN;
-    const STORE_DOMAIN = process.env.SHOPIFY_STORE_DOMAIN || shop;
+        // Prefer the env vars you're already using in /proxy/save,
+    // but fall back to the old names if they exist.
+    const ADMIN_TOKEN =
+      process.env.SHOPIFY_ADMIN_TOKEN ||
+      process.env.SHOPIFY_ADMIN_API_ACCESS_TOKEN ||
+      "";
+
+    const STORE_DOMAIN =
+      process.env.SHOPIFY_SHOP ||
+      process.env.SHOPIFY_STORE_DOMAIN ||
+      shop ||
+      "";
 
     if (!ADMIN_TOKEN || !STORE_DOMAIN) {
       return NextResponse.json(
-  { ok: false, error: "Server missing Shopify env vars" },
-  { status: 500, headers: CORS_HEADERS }
-);
+        {
+          ok: false,
+          error: !ADMIN_TOKEN
+            ? "Server missing Shopify admin token"
+            : "Server missing Shopify store domain"
+        },
+        { status: 500, headers: CORS_HEADERS }
+      );
     }
 
     // 1️⃣ Load the tasting.events metafield
-    const apiBase = `https://${STORE_DOMAIN}/admin/api/2024-07`;
+    const apiBase = `https://${STORE_DOMAIN}/admin/api/2024-10`;
 
     const metaListResp = await fetch(
       `${apiBase}/customers/${customer_id}/metafields.json?namespace=tasting&key=events`,
