@@ -103,46 +103,32 @@ export async function POST(req) {
     let removedCount = 0;
 
     if (Array.isArray(value.wines)) {
-      // 🔄 New wine-first model: { wines: [ { product_id, handle, ..., events: [] } ] }
-      const wines = value.wines;
+  // 🔄 New wine-first model: { wines: [ { product_id, handle, ..., events: [] } ] }
+  const wines = value.wines;
 
-      // Find the wine we want to "clear"
-      const targetIndex = wines.findIndex((w) => {
-        const wPid = Number(w.product_id || 0) || null;
-        const wHandle = w.handle || null;
-        const matchByPid = pid && wPid && wPid === pid;
-        const matchByHandle = handle && wHandle && wHandle === handle;
-        return matchByPid || matchByHandle;
-      });
+  // Find the wine we want to REMOVE entirely
+  const targetIndex = wines.findIndex((w) => {
+    const wPid = Number(w.product_id || 0) || null;
+    const wHandle = w.handle || null;
+    const matchByPid = pid && wPid && wPid === pid;
+    const matchByHandle = handle && wHandle && wHandle === handle;
+    return matchByPid || matchByHandle;
+  });
 
-      if (targetIndex === -1) {
-  // Nothing to delete for this wine
-  return NextResponse.json(
-    { ok: true, notFound: "wine" },
-    { headers: CORS_HEADERS }
-  );
+  if (targetIndex === -1) {
+    // Nothing to delete for this wine
+    return NextResponse.json(
+      { ok: true, notFound: "wine" },
+      { headers: CORS_HEADERS }
+    );
+  }
+
+  // Remove the wine object from the wines array
+  wines.splice(targetIndex, 1);
+  removedCount = 1;
 }
-
-      const wine = wines[targetIndex];
-
-      // Clear tasting fields but keep the wine + events history
-      wine.rating = null;
-      wine.nose = "";
-      wine.palate = "";
-      wine.note = "";
-      wine.updated_at = new Date().toISOString();
-
-      // Optional: also prune a specific event from this wine, if provided
-      if (event_handle && Array.isArray(wine.events)) {
-        wine.events = wine.events.filter(
-          (ev) =>
-            ev.collection_handle !== event_handle &&
-            ev.id !== event_handle
-        );
-      }
-
-      removedCount = 1;
-    } else if (Array.isArray(value.events)) {
+ 
+    else if (Array.isArray(value.events)) {
       // 🧩 Legacy event-first model: { events: [ { ..., wines: [] } ] }
 
       // 3️⃣ Find matching event (use collection_handle or id; handle was never set)
