@@ -204,6 +204,7 @@ export async function POST(request) {
     // 5) 🔄 Mirror into Supabase tasting_ratings
     try {
       const row = {
+        shop: shop || SHOP || "famelia-wine.myshopify.com",
         customer_id: String(customer_id),
         customer_email: customer_email || null,
         product_id: pid,
