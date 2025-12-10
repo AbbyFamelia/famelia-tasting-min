@@ -207,6 +207,10 @@ export async function POST(request) {
         shop: shop || SHOP || "famelia-wine.myshopify.com",
         customer_id: String(customer_id),
         customer_email: customer_email || null,
+        event_handle: event_handle || null,
+        event_name: event_name || null,
+        event_date: today, // 👈 NEW: satisfies NOT NULL "event_date"
+
         product_id: pid,
         product_handle: product.handle || "",
         product_title: product.title || "",
@@ -214,8 +218,6 @@ export async function POST(request) {
         nose: (product.nose || "").slice(0, 2000) || null,
         palate: (product.palate || "").slice(0, 2000) || null,
         note: (product.note || "").slice(0, 2000) || null,
-        event_handle: event_handle || null,
-        event_name: event_name || null,
         // created_at is handled by Supabase default if you set one
       };
 
