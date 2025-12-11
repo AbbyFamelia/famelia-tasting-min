@@ -224,6 +224,11 @@ export async function POST(request) {
         // created_at is handled by Supabase default if you set one
       };
 
+      console.log("Saving to Supabase:", {
+  product_id: pid,
+  product_image_url: product.product_image_url
+});
+
             const { error: supaError } = await supabase
         .from("tasting_ratings")
         .upsert(row, {
