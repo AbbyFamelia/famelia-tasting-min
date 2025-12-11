@@ -216,7 +216,7 @@ export async function POST(request) {
         product_id: pid,
         product_handle: product.handle || "",
         product_title: product.title || "",
-        product_image_url: product.product_image_url || null,
+        product_image_url: product.product_image_url || "",
         rating: (typeof product.rating === "number") ? product.rating : null,
         nose: (product.nose || "").slice(0, 2000) || null,
         palate: (product.palate || "").slice(0, 2000) || null,
