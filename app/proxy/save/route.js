@@ -137,6 +137,7 @@ export async function POST(request) {
         product_id: pid,
         handle: product.handle || "",
         title: product.title || "",
+        product_image_url: product.product_image_url || "",
         rating: (typeof product.rating === "number") ? product.rating : null,
         nose:   (product.nose   || "").slice(0, 2000),
         palate: (product.palate || "").slice(0, 2000),
@@ -150,6 +151,7 @@ export async function POST(request) {
       // Existing entry: preserve created_at, update tasting fields
       wine.handle = product.handle || wine.handle || "";
       wine.title  = product.title  || wine.title  || "";
+      wine.product_image_url = product.product_image_url || wine.product_image_url || "";
 
       if (typeof product.rating === "number") {
         wine.rating = product.rating;
@@ -214,6 +216,7 @@ export async function POST(request) {
         product_id: pid,
         product_handle: product.handle || "",
         product_title: product.title || "",
+        product_image_url: product.product_image_url || null,
         rating: (typeof product.rating === "number") ? product.rating : null,
         nose: (product.nose || "").slice(0, 2000) || null,
         palate: (product.palate || "").slice(0, 2000) || null,
