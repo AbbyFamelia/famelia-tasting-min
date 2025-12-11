@@ -221,16 +221,18 @@ export async function POST(request) {
         // created_at is handled by Supabase default if you set one
       };
 
-      const { error: supaError } = await supabase
+            const { error: supaError } = await supabase
         .from("tasting_ratings")
-        .insert([row]); // simple insert for now
+        .upsert(row, {
+          onConflict: "customer_id,product_id,event_handle",
+        });
 
-      if (supaError) {
-        console.error("Supabase insert error (tasting_ratings)", supaError);
+            if (supaError) {
+        console.error("Supabase upsert error (tasting_ratings)", supaError);
         // Don't block the customer – just log it
       }
     } catch (supErr) {
-      console.error("Supabase insert exception", supErr);
+      console.error("Supabase upsert exception", supErr);
       // Still don't block saving to Shopify
     }
 
