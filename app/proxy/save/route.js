@@ -90,9 +90,14 @@ export async function POST(request) {
   try {
     // 1) Verify the customer really matches your store record
     const customerGID = `gid://shopify/Customer/${customer_id}`;
-    const q1 = `query($id: ID!) { customer(id: $id) { id email } }`;
+    const q1 = `query($id: ID!) { customer(id: $id) { id email firstName lastName } }`;
     const d1 = await shopifyGraphQL(q1, { id: customerGID });
     const realEmail = d1?.customer?.email;
+
+    const firstName = d1?.customer?.firstName || "";
+    const lastName = d1?.customer?.lastName || "";
+    const customer_name = (firstName + " " + lastName).trim() || null;
+    
     if (!realEmail || realEmail.toLowerCase() !== String(customer_email).toLowerCase()) {
       return bad("Customer verification failed", 401, origin);
     }
@@ -208,6 +213,7 @@ export async function POST(request) {
       const row = {
         shop: shop || SHOP || "famelia-wine.myshopify.com",
         customer_id: String(customer_id),
+        customer_name: customer_name || null,
         customer_email: customer_email || null,
         event_handle: event_handle || null,
         event_name: event_name || null,
